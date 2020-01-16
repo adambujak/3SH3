@@ -1,15 +1,19 @@
 #include <stdlib.h>
 #include <signal.h>
+#include <unistd.h>
+#include <stdio.h>
 
 void signal_handler ( int sig )
 {
   if (sig == SIGINT)
   {
     printf("CTRL+C pressed!\n");
+    exit(1);
   }
   else if (sig == SIGTSTP) 
   {
     printf("CTRL+ pressed!\n");
+    exit(1);  
   }
   else if (sig == SIGALRM)
   {
