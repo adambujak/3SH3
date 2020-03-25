@@ -53,7 +53,17 @@ void printFileData ( struct stat * fileStat, char * path )
     getFileNameFromPath(path, fileName);
 
 
-    printf("mode: %o\n", fileStat->st_mode);
+    printf("mode: ");
+    printf((fileStat->st_mode & S_IRUSR) ? "r":"-");
+    printf((fileStat->st_mode & S_IWUSR) ? "w":"-");
+    printf((fileStat->st_mode & S_IXUSR) ? "x":"-");
+    printf((fileStat->st_mode & S_IRGRP) ? "r":"-");
+    printf((fileStat->st_mode & S_IWGRP) ? "w":"-");
+    printf((fileStat->st_mode & S_IXGRP) ? "x":"-");
+    printf((fileStat->st_mode & S_IROTH) ? "r":"-");
+    printf((fileStat->st_mode & S_IWOTH) ? "w":"-");
+    printf((fileStat->st_mode & S_IXOTH) ? "x":"-");
+    printf("\n");
     printf("links: %d\n", fileStat->st_nlink);
     printf("size (bytes): %d\n", fileStat->st_size);
     printf("size (blocks): %d\n", fileStat->st_blksize);
@@ -64,7 +74,46 @@ void printFileData ( struct stat * fileStat, char * path )
     printf("name: %s\n", fileName);
 }
 
-void printDirectoryContents ( char * pathToPrint, int indent )
+void printItemData ( char * filePath ) 
+{
+    struct tm modifiedDate;
+    struct stat fileStat; 
+    
+    if (lstat(filePath, &fileStat) != 0)
+    {
+        printf("Unable to get file properties.\n");
+        printf("Please check whether '%s' file exists.\n", filePath);
+        return;
+    }
+
+    struct group *grp;
+    struct passwd *usr;
+
+    grp = getgrgid(fileStat.st_gid);
+    usr = getpwuid(fileStat.st_uid);
+    modifiedDate = *(gmtime(&stats.st_mtime));
+    
+
+
+    printf((fileStat.st_mode & S_IRUSR) ? "r":"-");
+    printf((fileStat.st_mode & S_IWUSR) ? "w":"-");
+    printf((fileStat.st_mode & S_IXUSR) ? "x":"-");
+    printf((fileStat.st_mode & S_IRGRP) ? "r":"-");
+    printf((fileStat.st_mode & S_IWGRP) ? "w":"-");
+    printf((fileStat.st_mode & S_IXGRP) ? "x":"-");
+    printf((fileStat.st_mode & S_IROTH) ? "r":"-");
+    printf((fileStat.st_mode & S_IWOTH) ? "w":"-");
+    printf((fileStat.st_mode & S_IXOTH) ? "x":"-");
+    printf(" %d", fileStat.st_nlink);
+    printf(" %s", usr->pw_name);
+    printf(" %s", grp->gr_name);
+    printf(" %d", fileStat.st_size);
+    printf(" %d-%d-%d %d:%d:%d ", modifiedDate.tm_mday, modifiedDate.tm_mon, modifiedDate.tm_year + 1900, 
+                                              modifiedDate.tm_hour, modifiedDate.tm_min, modifiedDate.tm_sec);
+    // printf(" %s", fileName);
+}
+
+void printDirectoryContents ( char * pathToPrint )
 {
     DIR * dir = opendir(pathToPrint);
     if (dir == NULL)
@@ -76,31 +125,36 @@ void printDirectoryContents ( char * pathToPrint, int indent )
 
     while ((contents = readdir(dir)) != NULL)
     {   
+        char bufpath[MAX_PATH_LENGTH];
+
+        /* Add slash to end of path if not there */
+        int length = strlen(pathToPrint);
+        if (pathToPrint[length-1] != '/')
+        {
+            strcat(pathToPrint, "/");
+        }
+        snprintf(bufpath, MAX_PATH_LENGTH, "%s%s", pathToPrint, contents->d_name);
+        if ( contents->d_name[0] == '.' )
+        {
+            continue;
+        }
+        printItemData(bufpath);
+        printf("%s\n", contents->d_name);
+
         /* If directory */
         if (contents->d_type == DT_DIR)
         {
-            if (strcmp(contents->d_name, ".") == 0 || strcmp(contents->d_name, "..") == 0)
-            {
-                continue;
-            }
-            char bufpath[MAX_PATH_LENGTH];
-
-            /* Add slash to end of path if not there */
-            int length = strlen(pathToPrint);
-            if (pathToPrint[length-1] != '/')
-            {
-                strcat(pathToPrint, "/");
-            }
-            snprintf(bufpath, MAX_PATH_LENGTH, "%s%s", pathToPrint, contents->d_name);
-            printf("%*s[%s]\n", indent, "", contents->d_name);
             
-            printDirectoryContents(bufpath, indent+2);
+            
+            
+            printDirectoryContents(bufpath);
+            printf("\n");
             
         }
         /* If file */
         else 
         {
-            printf("%*s- %s\n", indent, "", contents->d_name);
+            // printItemData()
         }
     }
 
@@ -120,10 +174,11 @@ int main ()
         }
         else 
         {
-            printDirectoryContents(path, 0); // Is directory
+            printDirectoryContents(path); // Is directory
         }
     }
 
     return 0;
 }
 
+  
